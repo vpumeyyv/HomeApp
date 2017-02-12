@@ -65,10 +65,44 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 if (deviceName.contains(bluetooth_component)) {
                        
                 }
+                else
+                    //Open new thread because when the operation finishes it blocks the thread.
+                    private class ConnectThread extends Thread {
+                        private final BluetoothSocket mmSocket;
+                        private final BluetoothDevice mmDevice;
+                        private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-
+                        00805f9b34fb");
+                        
+                        // Get a BluetoothSocket to connect with the given BluetoothDevice.
+                        // because mmSocket is final.
+                        public ConnectThread(BluetoothDevice device) {
+                            BluetoothSocket tmp = null;
+                            mmDevice = device;
+                            try {
+                                tmp = device.createRfcommSocketToServiceRecord(MY_UUID);
+                            } catch (IOException e) { }
+                            mmSocket = tmp;
+                        }
+                        public void run() {
+                            mBluetoothAdapter.cancelDiscovery();
+                            try {
+                                mmSocket.connect();
+                            } 
+                            catch (IOException connectException) {
+                                try {
+                                    mSocket.close();
+                                } catch (IOException closeException) { }
+                                return;
+                            }
+                        }
+                        public void cancel() {
+                        try {
+                            mmSocket.close();
+                        } catch (IOException e) { }
+                    }
+                }
             }
         }
-        
-
     }
 
 
@@ -90,35 +124,5 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 }
 
-    private class ConnectThread extends Thread {
-        private final BluetoothSocket mmSocket;
-        private final BluetoothDevice mmDevice;
-        private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-
-        00805f9b34fb");
-        public ConnectThread(BluetoothDevice device) {
-            BluetoothSocket tmp = null;
-            mmDevice = device;
-            try {
-                    tmp = device.createRfcommSocketToServiceRecord(MY_UUID);
-                } catch (IOException e) { }
-            mmSocket = tmp;
-        }
-        public void run() {
-            mBluetoothAdapter.cancelDiscovery();
-            try {
-                mmSocket.connect();
-            } 
-            catch (IOException connectException) {
-                try {
-                    mSocket.close();
-                } catch (IOException closeException) { }
-                return;
-            }
-        }
-        public void cancel() {
-            try {
-                mmSocket.close();
-            } catch (IOException e) { }
-        }
-    }
+
 
