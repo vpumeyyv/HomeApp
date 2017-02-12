@@ -6,7 +6,6 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
-
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -19,11 +18,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     //
     private GoogleMap mMap;
-    //
+    //Defining the required component for any and all location activities
     private LocationManager locationManager;
     //Defining the required component for online location monitoring
     private LocationListener listener;
-    //Defining the required component for any and all Bluetooth activity
+    //Defining the required component for any and all Bluetooth activities
     private BluetoothAdapter mBluetoothAdapter;
     //Defining a popup window to turn on Bluetooth
     private Intent enableBtIntent;
@@ -31,7 +30,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
     @Override
-    //What hapens when I open the aplication is executed in 'onCreate'
+    //What hapens when I open the application is executed in 'onCreate'
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
@@ -43,14 +42,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //Finding the device's bluetooth ID, if any.
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
-        // Device does not support Bluetooth
+            // Device does not support Bluetooth
         }
 
-        //If Bluetooth isn't on, request user to turn it on using popup
+        //If Bluetooth isn't on, request user to allow app turn it on using a popup.
         if (!mBluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, 1);
         }
+        
+        //Get all of the allready paired bluetooth devices.
+        //This is usefull if it's not the first time using the app and the user's phone has connected previously to the Arduino.
+        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+        //If there's atleast one paired bluetooth device, it may be the arduino we seek.
+        if (pairedDevices.size() > 0) {
+        // There are paired devices. Get the name and address of each paired device.
+            for (BluetoothDevice device : pairedDevices) {
+                //Get's all of the names and MAC addresses of the paired devices. (MAC=Media Access Control)
+                String deviceName = device.getName();
+                String deviceHardwareAddress = device.getAddress();
+                
+            }
+        }
+        
 
     }
 
