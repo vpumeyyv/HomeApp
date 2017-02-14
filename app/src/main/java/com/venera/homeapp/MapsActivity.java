@@ -27,8 +27,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     //Defining a popup window to turn on Bluetooth
     private Intent enableBtIntent;
 
-
-
     @Override
     //What hapens when I open the application is executed in 'onCreate'
     protected void onCreate(Bundle savedInstanceState) {
