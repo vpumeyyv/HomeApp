@@ -1,0 +1,20 @@
+{
+			  "version": 0.1,
+			  "device": {
+				"arduinoversion": 8.2,
+				"make": "samsung",
+				"model": "note 3",
+				"os": "android",
+				"osversion": "5.0.3",
+				"deviceid": "IMI1234QA876987809"
+			  },
+			  "userid": "123",
+			  "longitude": 34.5,
+			  "latitude": 31.123,
+			  "timestamp": "2017-02-14 20:59:33.257000",
+			  "measurements": [
+				{ "substance": "co2", "value": 123 },
+				{ "substance": "co", "value": 321 },
+				{ "substance": "nox", "value": 456 }
+			  ]
+			}
