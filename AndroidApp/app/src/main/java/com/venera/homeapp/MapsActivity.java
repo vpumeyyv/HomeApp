@@ -242,6 +242,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         CircleOptions circleOptions = new CircleOptions()
                 .center(test)
                 .clickable(true)
+                .anchor(1,0)
                 .radius(400)
                 .strokeWidth(0)
                 .fillColor(Color.argb(64,0,0,255));
@@ -251,7 +252,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .position(test)
                 .alpha(0)
                 .title("Testing...")
-                .snippet("It seems to work!"));
+                .snippet(readMsg));
 
         Test =mMap.addCircle(circleOptions);
 
