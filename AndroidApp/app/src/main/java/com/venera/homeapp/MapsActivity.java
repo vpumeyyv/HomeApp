@@ -5,18 +5,14 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.graphics.Color;
-import android.location.Location;
 import android.location.LocationManager;
 import android.os.Message;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
 import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.GoogleMap.OnCameraIdleListener;
-import com.google.android.gms.maps.GoogleMap.OnMapClickListener;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
@@ -30,51 +26,29 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import android.os.Handler;
+import android.widget.Toast;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 
 import static com.venera.homeapp.R.id.map;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
 
-    private GoogleMap mMap;
     //Defining the required component for any and all location activities
     private LocationManager locationManager;
     //Defining the required component for online location monitoring
     private LocationListener listener;
     //Defining the required component for any and all Bluetooth activities
     private BluetoothAdapter mBluetoothAdapter;
-    //Defining a popup window to turn on Bluetooth
-    private Intent enableBtIntent;
     //The bluetooth device the android will connect to
     private BluetoothDevice mDevice;
-    //The thread in which the connection will occur.
-    private ConnectThread mConnectThread;
-    //The thread in which the communication will occur.
-    private ConnectedThread mConnectedThread;
-    // Get a BluetoothSocket to connect with the given BluetoothDevice.
-    // This code below show how to do it and handle the case that the UUID from the device is not found and trying a default UUID.
-    // Default UUID
-    private UUID DEFAULT_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     //A string for debugging the bluetooth connection
     private static final String TAG = "MY_APP_DEBUG_TAG";
-    //Circle popup related
-
-    private final Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            byte[] writeBuf = (byte[]) msg.obj;
-            int begin = (int)msg.arg1;
-            int end = (int)msg.arg2;
-
-            switch(msg.what) {
-                case 1:
-                    String writeMessage = new String(writeBuf);
-                    writeMessage = writeMessage.substring(begin, end);
-                    break;
-            }
-        }
-    };
-
+    private int co2 = 0;
+    private String js="didn't work";
 
     @Override
     //What happens when I open the application is executed in 'onCreate'
@@ -94,7 +68,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //If Bluetooth isn't on, request user to allow app turn it on using a popup.
         if (!mBluetoothAdapter.isEnabled()) {
-            enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, 1);
         }
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
@@ -103,68 +77,52 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 mDevice = device;
             }
         }
-        mConnectThread = new ConnectThread(mDevice);
+        ConnectThread mConnectThread = new ConnectThread(mDevice);
         mConnectThread.start();
-
 
     }
     //Open new thread because when the operation finishes it blocks the thread.
     private class ConnectThread extends Thread {
-        private BluetoothSocket mmSocket;
-        private BluetoothDevice mmDevice;
-
+        private final BluetoothSocket mmSocket;
+        private final BluetoothDevice mmDevice;
+        private final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
         public ConnectThread(BluetoothDevice device) {
-            // Use a temporary object that is later assigned to mmSocket
             BluetoothSocket tmp = null;
             mmDevice = device;
-
             //When the app deals with outside components, the app needs to check that the components work.
-            //The app 'tries' the components, and if they'e not working (null) it returns errors.
+            //The app tries a code in 'try', and if it catches an error the app executes a code in 'catch' which helps in debugging.
             try {
-                // Use the UUID of the device that got discovered
-                if (mmDevice != null) {
-                    Log.i(TAG, "Device Name: " + mmDevice.getName());
-                    Log.i(TAG, "Device UUID: " + mmDevice.getUuids()[0].getUuid());
-                    tmp = device.createRfcommSocketToServiceRecord(mmDevice.getUuids()[0].getUuid());
-
-                } else Log.d(TAG, "Device is null.");
-            } catch (NullPointerException e) {
-                Log.d(TAG, " UUID from device is null, Using Default UUID, Device name: " + device.getName());
-                try {
-                    tmp = device.createRfcommSocketToServiceRecord(DEFAULT_UUID);
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                }
+                // Use a temporary object that is later assigned to mmSocket
+                tmp = mmDevice.createRfcommSocketToServiceRecord(MY_UUID);
             } catch (IOException e) {
+                Log.e(TAG, "Socket's create() method failed", e);
             }
+            mmSocket = tmp;
         }
-
         public void run() {
             // Cancel discovery because it otherwise slows down the connection.
             mBluetoothAdapter.cancelDiscovery();
-
             try {
-                // Connect to the remote device through the socket. This call blocks
-                // until it succeeds or throws an exception.
                 mmSocket.connect();
+                Log.e(TAG, "Connected");
             } catch (IOException connectException) {
+                Log.e(TAG, "Unable to connect", connectException);
                 // Unable to connect; close the socket and return.
-                //If closing fails, returns error
                 try {
                     mmSocket.close();
                 } catch (IOException closeException) {
                     Log.e(TAG, "Could not close the client socket", closeException);
+                    return;
                 }
-                return;
+                connectionFailed();
             }
             // The connection attempt succeeded. Perform work associated with
             // the connection in a separate thread.
-            mConnectedThread = new ConnectedThread(mmSocket);
+            Log.e("testing stuff", "testing stuff5");
+            ConnectedThread mConnectedThread = new ConnectedThread(mmSocket);
             mConnectedThread.start();
         }
-
         // Closes the client socket and causes the thread to finish.
-        //If closing fails, returns error
         public void cancel() {
             try {
                 mmSocket.close();
@@ -173,53 +131,73 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
     }
+
     private class ConnectedThread extends Thread {
         private final BluetoothSocket mmSocket;
         private final InputStream mmInStream;
-        private byte[] mmBuffer; // mmBuffer store for the stream
-        private Handler mHandler; // handler that gets info from Bluetooth service
-
+        private final OutputStream mmOutStream;
         public ConnectedThread(BluetoothSocket socket) {
+            Log.e("testing stuff", "testing stuff6");
             mmSocket = socket;
             InputStream tmpIn = null;
             OutputStream tmpOut = null;
-
-            // Get the input and output streams; using temp objects because
-            // member streams are final.
+            // Get the input stream; Using temp objects because member streams are final.
             try {
                 tmpIn = socket.getInputStream();
+                Log.e("testing stuff", "testing stuff7");
             } catch (IOException e) {
                 Log.e(TAG, "Error occurred when creating input stream", e);
             }
-            try {
-                tmpOut = socket.getOutputStream();
-            } catch (IOException e) {
-                Log.e(TAG, "Error occurred when creating output stream", e);
-            }
-
             mmInStream = tmpIn;
+            mmOutStream = tmpOut;
+            Log.e("testing stuff", "testing stuff8");
         }
-
         public void run() {
-            mmBuffer = new byte[1024];
-            int numBytes; // bytes returned from read()
-
-            // Keep listening to the InputStream until an exception occurs.
+            Log.e("testing stuff", "testing stuff9");
+            byte[] buffer = new byte[1024];
+            int begin = 0;
+            int bytes = 0;
+            int count = 0;
             while (true) {
                 try {
-                    // Read from the InputStream.
-                    numBytes = mmInStream.read(mmBuffer);
-                    // Send the obtained bytes to the UI activity.
-                    Message readMsg = mHandler.obtainMessage(0, numBytes, -1, mmBuffer);
-                    readMsg.sendToTarget();
-                } catch (IOException e) {
+                    Log.e("testing stuff", "testing stuff10");
+                    if (this.mmInStream.available() != 0){
+                        Log.e("testing stuff", "testing stuff11");
+                        bytes = this.mmInStream.read(buffer);
+                        Log.e("testing stuff", "testing stuff12");
+                        for(int i = begin; i < bytes; i++) {
+                            Log.e("testing stuff", "before");
+                            mHandler.obtainMessage(1, begin, i, buffer).sendToTarget();
+                            Log.e("testing stuff", "after");
+                            begin = i + 1;
+                            if (i == bytes - 1) {
+                                bytes = 0;
+                                begin = 0;
+                            }
+                        }
+                        count++;
+                        Log.e("Reading counter", count + " times");
+                    } else {
+                        //If there is no input, wait for half a second.
+                        Log.e("testing stuff", "nothing");
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                            Log.d(TAG, "Couldn't sleep");
+                        }
+                    }
+                } catch (IOException|NullPointerException e) {
                     Log.d(TAG, "Input stream was disconnected", e);
                     break;
                 }
             }
         }
+        public void write(byte[] bytes) {
+            try {
+                mmOutStream.write(bytes);
+            } catch (IOException e) { }
+        }
 
-        //Call this method from the main activity to shut down the connection.
         public void cancel() {
             try {
                 mmSocket.close();
@@ -229,16 +207,49 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+     //Indicate that the connection attempt failed and notify the user.
+    private void connectionFailed() {
+        Toast.makeText(getApplicationContext(), "Unable to connect device", Toast.LENGTH_SHORT).show();
+        ConnectThread mConnectThread = new ConnectThread(mDevice);
+        mConnectThread.start();
+    }
+
+    private final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            Log.e("testing stuff", "in the middle");
+            byte[] writeBuf = (byte[]) msg.obj;
+            int begin = (int)msg.arg1;
+            int end = (int)msg.arg2;
+            js = String.valueOf(writeBuf[0]);
+
+            switch(msg.what) {
+                case 1:
+                    String writeMessage = new String(writeBuf);
+                    writeMessage = writeMessage.substring(begin, end);
+                    Log.e("testing stuff", "testing stuff10");
+                    try {
+                        JSONObject json = (JSONObject) new JSONTokener(writeMessage).nextValue();
+                        co2 = json.getInt("CO2");
+                        Toast.makeText(getApplicationContext(), co2, Toast.LENGTH_SHORT).show();
+                    } catch (JSONException e) {
+                        Log.e("JSONObject", "Input was not in JSON format");
+                    }
+                    break;
+            }
+        }
+    };
+
      //Manipulates the map once available.
      //This callback is triggered when the map is ready to be used.
      //This is where we can add markers for showing the air pollution.
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
+        GoogleMap mMap = googleMap;
         mMap.setMyLocationEnabled(true);
         //Creating a test circle on our lab.
         Circle Test;
-        LatLng test = new LatLng(32.2550, 34.9216);
+        LatLng test = new LatLng(32.2650, 34.9266);
         CircleOptions circleOptions = new CircleOptions()
                 .center(test)
                 .clickable(true)
@@ -251,9 +262,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .position(test)
                 .alpha(0)
                 .title("Testing...")
-                .snippet("It seems to work!"));
+                .snippet("CO2 levels are 0 ppm"));
 
-        Test =mMap.addCircle(circleOptions);
+
+        Test = mMap.addCircle(circleOptions);
 
         //when the test circle is clicked-
         final Random rand = new Random();
@@ -275,12 +287,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onCircleClick(Circle Test) {
                 Test.setFillColor(Color.argb(64,rand.nextInt(255),rand.nextInt(255),rand.nextInt(255)));
+                co2++;
+                perth.setSnippet(js);
                 perth.showInfoWindow();
             }
         });
+    }
+    public void setValues() {
 
     }
-
 }
 
 
