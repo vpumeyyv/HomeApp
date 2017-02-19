@@ -484,59 +484,23 @@ void loop()
    // Serial.print("\n");
 
    object["LPG"] = MQGetGasPercentage(MQ2Read(MQ2_PIN)/Ro2,GAS_LPG) ;
-  /* Serial.print("LPG:"); 
-   Serial.print(MQGetGasPercentage(MQ2Read(MQ2_PIN)/Ro2,GAS_LPG) );
-   Serial.print( " ppm" );
-   Serial.print("    ");   */
    
-   object["CO"] = MQGetGasPercentage(MQ2Read(MQ2_PIN)/Ro2,GAS_CO);
-   /* Serial.print("CO:"); 
-   Serial.print(MQGetGasPercentage(MQ2Read(MQ2_PIN)/Ro2,GAS_CO) );
-   Serial.print( "ppm" );
-   Serial.print("    ");  */ 
+   object["CO"] = MQGetGasPercentage(MQ2Read(MQ2_PIN)/Ro2,GAS_CO); 
    
    object["SMOKE"] = MQGetGasPercentage(MQ2Read(MQ2_PIN)/Ro2,GAS_SMOKE);
-   /* Serial.print("SMOKE:"); 
-   Serial.print(MQGetGasPercentage(MQ2Read(MQ2_PIN)/Ro2,GAS_SMOKE) );
-   Serial.print( "ppm" );
-   Serial.print("\n");   */
    
-   object["N-HEXANE"] = MQGetGasPercentage(MQ138Read(MQ138_PIN)/Ro138,GAS_NHEXANE);
-   /* Serial.print("N-HEXANE:"); 
-   Serial.print(MQGetGasPercentage(MQ138Read(MQ138_PIN)/Ro138,GAS_NHEXANE) );
-   Serial.print( "ppm" );
-   Serial.print("    "); */  
+   object["N-HEXANE"] = MQGetGasPercentage(MQ138Read(MQ138_PIN)/Ro138,GAS_NHEXANE);  
    
    object["BENZENE"] = MQGetGasPercentage(MQ138Read(MQ138_PIN)/Ro138,GAS_BENZENE);
-   /* Serial.print("BENZENE:"); 
-   Serial.print(MQGetGasPercentage(MQ138Read(MQ138_PIN)/Ro138,GAS_BENZENE) );
-   Serial.print( "ppm" );
-   Serial.print("  ");  */
    
    object["PROPANE"] = MQGetGasPercentage(MQ138Read(MQ138_PIN)/Ro138,GAS_C3H8);
-   /* Serial.print("PROPANE");
-   Serial.print(MQGetGasPercentage(MQ138Read(MQ138_PIN)/Ro138,GAS_C3H8) );
-   Serial.print("ppm");
-   Serial.print("\n");  */
 
    // co7 is the same as co, it's just monitored by mq7
    object["CO7"] = MQGetGasPercentage(MQ7Read(MQ7_PIN)/Ro7,GAS_CO7);
-   /* Serial.print("CO:"); 
-   Serial.print(MQGetGasPercentage(MQ7Read(MQ7_PIN)/Ro7,GAS_CO7) );
-   Serial.print( "ppm" );
-   Serial.print("\n");  */
    
    object["O3"] = MQGetGasPercentage(MQ131Read(MQ131_PIN)/Ro131,GAS_O3);
-   /* Serial.print("O3:"); 
-   Serial.print(MQGetGasPercentage(MQ131Read(MQ131_PIN)/Ro131,GAS_O3) );
-   Serial.print( "ppb" );
-   Serial.print("\n");  */
     
    object["NH3"] = MQGetGasPercentage(MQ137Read(MQ137_PIN)/Ro137,GAS_NH3);
-   /* Serial.print("NH3:"); 
-   Serial.print(MQGetGasPercentage(MQ137Read(MQ137_PIN)/Ro137,GAS_NH3) );
-   Serial.print( "ppm" );
-   Serial.print("\n");  */
 
    object.printTo(Serial);
    Serial.println();
