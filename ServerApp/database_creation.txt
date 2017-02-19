@@ -1,0 +1,30 @@
+﻿54.171.192.197
+
+sudo su –
+yum -y update
+yum -y install mysql 
+yum -y install mysql-server 
+
+Add mysql and apache to server autostart, and start service
+chkconfig mysqld on
+service mysqld start 
+
+mysqladmin -u root password 'Asjh5&^$Bjn{'
+
+mysql -u root -p
+
+ DROP DATABASE test;
+ DELETE FROM mysql.user WHERE user = '';
+ FLUSH PRIVILEGES;
+
+create database homeapp;
+
+CREATE USER 'vpumeyyv'@'%' IDENTIFIED BY 'A1on1onMotek2016';
+
+GRANT ALL PRIVILEGES
+ON homeapp.*
+TO 'vpumeyyv'@'localhost';
+
+
+
+curl -i "https://apigateway.eu-west-1.amazonaws.com/restapis/61cn8cug1h/stages/Prod/exports/swagger?extensions=integration" -HAccept:application/json
