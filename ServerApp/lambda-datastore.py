@@ -2,6 +2,7 @@ import json
 import os
 import datetime 
 import random 
+import urlparse
 # external dependencies
 import pymysql
 # private dependencies
@@ -17,30 +18,35 @@ Simplified approximate query - assume near euclidan geometry.
 111.3278 = 1 degree in km
 57.29 = 180/PI conversion degrees to radians
 
-select longitude, latitude, distance_sq, substances.code , measurement from (SELECT longitude, latitude , sqrt(
-POW( 111.3278 * ( latitude - 31.124 ) , 2 ) + POW( 111.3278 * ( 34.6 - longitude ) * COS( latitude / 57.29 ) , 2 )
-) AS distance_sq, events.substanceid , avg(measurement) as measurement 
-FROM events group by longitude, latitude, distance_sq, events.substanceid HAVING distance_sq <100) as events 
-JOIN substances ON events.substanceid = substances.id
-WHERE events.measurement > substances.threshold
-
-ORDER BY distance_sq
-
+SELECT longitude, latitude , sqrt(
+		POW( 111.3278 * ( latitude - 31.124 ) , 2 ) + POW( 111.3278 * ( 34.6 - longitude ) * COS( latitude / 57.29 ) , 2 )
+		) AS distance_sq
+	FROM events 
+	HAVING distance_sq <10
+	ORDER BY distance_sq
 """
 
 # Main function 
 def lambda_handler(event, context):
 	# write event to database, and then fetch the current results
 	assert event["context"]["http-method"] in ["POST","GET"] , "Method %r is not supported" % event["context"]["http-method"]
+	# return event
 	print event["context"]["http-method"]
 	connection=connect_database()
-	if event["context"]["http-method"]=="POST":
+	if event["context"]["http-method"]=="POST" and event["params"]["header"]["Content-type"] == "application/json":
 		response = write_event(event, connection)
 		longitude=event["body-json"]["longitude"]
 		latitude=event["body-json"]["latitude"]
-	else: # GET
+	elif event["context"]["http-method"]=="POST" and event["params"]["header"]["Content-type"] == "application/x-www-form-urlencoded":
+		body=dict(urlparse.parse_qsl(event["body-json"]))
+		return body
+		longitude=event["body-json"]["longitude"]
+		latitude=event["body-json"]["latitude"]
+	elif event["context"]["http-method"]== "GET": 
 		longitude=event["params"]["querystring"]["longitude"]
 		latitude=event["params"]["querystring"]["latitude"]
+	else:
+		return {}
 	response = read_stats(connection, longitude, latitude) 
 	return response
 
@@ -67,45 +73,47 @@ def write_event( event, connection):
 		substanceid=point["substance"]
 		measurement=point["value"]
 		with connection.cursor() as cur:
-			result = cur.execute('INSERT INTO events(eventdate, deviceid, userid, longitude, latitude, substanceid, measurement) VALUES (%s,%s,%s,%s,%s,%s,%s) ', 
+			statement= """INSERT INTO events(eventdate, deviceid, userid, 
+						longitude, latitude, substanceid, measurement) VALUES (%s,%s,%s,%s,%s,%s,%s) """
+			result = cur.execute( 
+				statement, 
 				(eventdate, deviceid, userid, longitude, latitude, substanceid, measurement ) 
 				)	
 	return	result	
 
 #-------------------------------------------------------------------------------------------
 def read_stats( connection, longitude, latitude):
-	response = [
-				  {
-					"longitude": 31,
-					"latitude": 34,
-					"data": [
-					  {
-						"gas": "co",
-						"value": 45
-					  }
-					]
-				  },
-				  {
-					"longitude": 31.34,
-					"latitude": 34.31,
-					"data": [
-					  {
-						"gas": "co",
-						"value": 45
-					  },
-					  {
-						"gas": "co2",
-						"value": 47
-					  }
-					]
-				  }
-				]
-	
-	return	response	
-	with connection.cursor() as cur:
-		result = cur.execute('INSERT INTO mod_globaldots_usage(creation_time, reporting_period, vendor, customer_account_number, customer_account_type, customer_name, customerid, serviceid, service, region, uom, qty) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)  ON DUPLICATE KEY UPDATE qty=%s, service=%s', 
-			(creation_time, reporting_period, vendor, customer_account_number, customer_account_type, customer_name, customerid, serviceid, serviceName, region, uom, qty, qty, serviceName ) )	
-	return	response				
+	statement = """
+		select longitude, latitude, distance_sq, substances.code , measurement 
+		from 
+			(SELECT longitude as longitude, latitude , sqrt(
+				POW( 111.3278 * ( latitude - %r ) , 2 ) + POW( 111.3278 * ( 34.6 - %r ) * COS( latitude / 57.29 ) , 2 )
+				) AS distance_sq, 
+				substanceid , avg(measurement) as measurement 
+			FROM events 
+			group by longitude, latitude, distance_sq, events.substanceid 
+			HAVING distance_sq <%r ) as events 
+		JOIN substances ON events.substanceid = substances.id
+		WHERE events.measurement > substances.threshold
+		
+		ORDER BY distance_sq;
+		""" % (latitude,longitude, 10) 
+	with connection.cursor(pymysql.cursors.DictCursor) as cur:
+		result = cur.execute( statement )	
+		result = cur.fetchall()
+		result_wip={}	
+	for item in result:
+		longitude=float(item["longitude"])
+		latitude=float(item["latitude"])
+		tuple=(longitude, latitude)
+		print tuple
+		if not bool(result_wip.get(tuple)):  
+			result_wip.update( { tuple : {"longitude": longitude, "latitude": latitude, "data":[]}} ) 
+		result_wip[tuple]["data"].append( 
+							{"code":item["code"], "measurement": float(item["measurement"])}
+							)
+	final_list = [ value for key, value in result_wip.iteritems()]
+	return	final_list				
 	
 #-------------------------------------------------------------------------------------------
 
@@ -115,10 +123,10 @@ if __name__=="__main__":
 	rnd = random.randrange(123, 170)
 	print timestamp, rnd
 	# quit()
-	event=	{
+	POST_json =	{
 			  "body-json": 	{
 					   "version": 0.1,
-					  "device": {
+					   "device": {
 						"arduinoversion": 8.2,
 						"make": "samsung",
 						"model": "note 3",
@@ -180,7 +188,55 @@ if __name__=="__main__":
 				"cognito-authentication-provider": ""
 			  }
 			}
+
+	POST_url_encoded=	{
+			  "body-json": 	"userid=7890&longitude=34.50178922&latitude=31.12312311&substance=1&value=123",
+			  "params": {
+				"path": {},
+				"querystring": {},
+				"header": {
+				  "Via": "1.1 5fc330730b7a22af558c1164ae769565.cloudfront.net (CloudFront)",
+				  "CloudFront-Is-Desktop-Viewer": "true",
+				  "CloudFront-Is-SmartTV-Viewer": "false",
+				  "CloudFront-Forwarded-Proto": "https",
+				  "X-Forwarded-For": "46.120.227.175, 216.137.60.73",
+				  "CloudFront-Viewer-Country": "IL",
+				  "Content-type": "application/x-www-form-urlencoded",
+				  "Accept": "*/*",
+				  "User-Agent": "curl/7.43.0",
+				  "X-Amzn-Trace-Id": "Root=1-58a8d59a-5444ea3142a0f36500efdc28",
+				  "Host": "61cn8cug1h.execute-api.eu-west-1.amazonaws.com",
+				  "X-Forwarded-Proto": "https",
+				  "X-Amz-Cf-Id": "i-KX32dw8q5T3IQUPe6YupJDzmlrRyjzdUt_jvZdtXkaVBAFAPiA7g==",
+				  "CloudFront-Is-Tablet-Viewer": "false",
+				  "X-Forwarded-Port": "443",
+				  "CloudFront-Is-Mobile-Viewer": "false"
+				}
+			  },
+			  "stage-variables": {},
+			  "context": {
+				"cognito-authentication-type": "",
+				"http-method": "POST",
+				"account-id": "",
+				"resource-path": "/homeapp/measurements",
+				"authorizer-principal-id": "",
+				"user-arn": "",
+				"request-id": "2889eec0-f630-11e6-b221-af714872239e",
+				"source-ip": "46.120.227.175",
+				"caller": "",
+				"api-key": "",
+				"user-agent": "curl/7.43.0",
+				"user": "",
+				"cognito-identity-pool-id": "",
+				"api-id": "61cn8cug1h",
+				"resource-id": "mrfymt",
+				"stage": "Prod",
+				"cognito-identity-id": "",
+				"cognito-authentication-provider": ""
+			  }
+			}
 	
+	event=POST_url_encoded		
 	context={}
 	result=lambda_handler(event, context)
 	print json.dumps(result)

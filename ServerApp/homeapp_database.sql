@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS substances (
   PRIMARY KEY (id)
   ) ;
 
-
 CREATE TABLE IF NOT EXISTS devices (
   id int(10) NOT NULL AUTO_INCREMENT,
   deviceid varchar(256) NOT NULL , 
