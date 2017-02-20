@@ -30,8 +30,8 @@ SELECT longitude, latitude , sqrt(
 def lambda_handler(event, context):
 	# write event to database, and then fetch the current results
 	assert event["context"]["http-method"] in ["POST","GET"] , "Method %r is not supported" % event["context"]["http-method"]
-	# return event
-	print event["context"]["http-method"]
+	if event["params"]["header"]["debug"]=="1": 
+		return event
 	connection=connect_database()
 	if event["context"]["http-method"]=="POST" and event["params"]["header"]["Content-type"] == "application/json":
 		response = write_event(event, connection)
@@ -39,15 +39,14 @@ def lambda_handler(event, context):
 		latitude=event["body-json"]["latitude"]
 	elif event["context"]["http-method"]=="POST" and event["params"]["header"]["Content-type"] == "application/x-www-form-urlencoded":
 		body=dict(urlparse.parse_qsl(event["body-json"]))
-		return body
-		longitude=event["body-json"]["longitude"]
-		latitude=event["body-json"]["latitude"]
+		longitude=body["longitude"]
+		latitude=body["latitude"]
 	elif event["context"]["http-method"]== "GET": 
 		longitude=event["params"]["querystring"]["longitude"]
 		latitude=event["params"]["querystring"]["latitude"]
 	else:
 		return {}
-	response = read_stats(connection, longitude, latitude) 
+	response = read_stats(connection, float(longitude), float(latitude) ) 
 	return response
 
 
@@ -75,6 +74,7 @@ def write_event( event, connection):
 		with connection.cursor() as cur:
 			statement= """INSERT INTO events(eventdate, deviceid, userid, 
 						longitude, latitude, substanceid, measurement) VALUES (%s,%s,%s,%s,%s,%s,%s) """
+			print statement % (eventdate, deviceid, userid, longitude, latitude, substanceid, measurement )
 			result = cur.execute( 
 				statement, 
 				(eventdate, deviceid, userid, longitude, latitude, substanceid, measurement ) 
@@ -83,6 +83,7 @@ def write_event( event, connection):
 
 #-------------------------------------------------------------------------------------------
 def read_stats( connection, longitude, latitude):
+	print "Getting back results for", longitude, latitude
 	statement = """
 		select longitude, latitude, distance_sq, substances.code , measurement 
 		from 
@@ -98,6 +99,7 @@ def read_stats( connection, longitude, latitude):
 		
 		ORDER BY distance_sq;
 		""" % (latitude,longitude, 10) 
+	# print statement ; quit()
 	with connection.cursor(pymysql.cursors.DictCursor) as cur:
 		result = cur.execute( statement )	
 		result = cur.fetchall()
@@ -106,7 +108,7 @@ def read_stats( connection, longitude, latitude):
 		longitude=float(item["longitude"])
 		latitude=float(item["latitude"])
 		tuple=(longitude, latitude)
-		print tuple
+		# print tuple
 		if not bool(result_wip.get(tuple)):  
 			result_wip.update( { tuple : {"longitude": longitude, "latitude": latitude, "data":[]}} ) 
 		result_wip[tuple]["data"].append( 
@@ -120,9 +122,6 @@ def read_stats( connection, longitude, latitude):
 
 if __name__=="__main__":
 	timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-	rnd = random.randrange(123, 170)
-	print timestamp, rnd
-	# quit()
 	POST_json =	{
 			  "body-json": 	{
 					   "version": 0.1,
@@ -139,9 +138,9 @@ if __name__=="__main__":
 					  "latitude": 31.12312311,
 					  "timestamp": timestamp,
 					  "measurements": [
-						{ "substance": "1", "value": 123 },
-						{ "substance": "2", "value": 321 },
-						{ "substance": "3", "value": 456 }
+						{ "substance": "1", "value": random.randrange(123, 170) },
+						{ "substance": "2", "value": random.randrange(300, 400)  },
+						{ "substance": "3", "value": random.randrange(450, 470)  }
 					  ]
 					},
 			  "params": {
@@ -155,6 +154,7 @@ if __name__=="__main__":
 				  "X-Forwarded-For": "46.120.227.175, 216.137.60.73",
 				  "CloudFront-Viewer-Country": "IL",
 				  "Content-type": "application/json",
+				  "debug": "0",
 				  "Accept": "*/*",
 				  "User-Agent": "curl/7.43.0",
 				  "X-Amzn-Trace-Id": "Root=1-58a8d59a-5444ea3142a0f36500efdc28",
@@ -203,6 +203,7 @@ if __name__=="__main__":
 				  "CloudFront-Viewer-Country": "IL",
 				  "Content-type": "application/x-www-form-urlencoded",
 				  "Accept": "*/*",
+				  "debug": "0",
 				  "User-Agent": "curl/7.43.0",
 				  "X-Amzn-Trace-Id": "Root=1-58a8d59a-5444ea3142a0f36500efdc28",
 				  "Host": "61cn8cug1h.execute-api.eu-west-1.amazonaws.com",
@@ -235,8 +236,63 @@ if __name__=="__main__":
 				"cognito-authentication-provider": ""
 			  }
 			}
+			
+	GET_json=		{
+		  "body-json": {},
+		  "params": {
+			"path": {},
+			"querystring": {
+			  "latitude": "31.123",
+			  "longitude": "34.501"
+			},
+			"header": {
+			  "Via": "2.0 974c28f7c099ed222b7c7aa8bcbaf5da.cloudfront.net (CloudFront)",
+			  "Accept-Language": "en-US,en;q=0.8,he;q=0.6",
+			  "CloudFront-Is-Desktop-Viewer": "true",
+			  "CloudFront-Is-SmartTV-Viewer": "false",
+			  "CloudFront-Is-Mobile-Viewer": "false",
+			  "X-Forwarded-For": "46.120.227.175, 216.137.60.60",
+			  "CloudFront-Viewer-Country": "IL",
+			  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+				  "debug": "0",
+			  "upgrade-insecure-requests": "1",
+			  "X-Amzn-Trace-Id": "Root=1-58ab5f26-2ee1866732599b596749a0ee",
+			  "X-Forwarded-Port": "443",
+			  "Host": "61cn8cug1h.execute-api.eu-west-1.amazonaws.com",
+			  "X-Forwarded-Proto": "https",
+			  "X-Amz-Cf-Id": "dGfq0JXcjp0CvqUI0EmJLD8ey6H_LC1OELjGz9paM9JbB9Iovb8q9Q==",
+			  "CloudFront-Is-Tablet-Viewer": "false",
+			  "cache-control": "max-age=0",
+			  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36",
+			  "CloudFront-Forwarded-Proto": "https",
+			  "Accept-Encoding": "gzip, deflate, sdch, br"
+			}
+		  },
+		  "stage-variables": {},
+		  "context": {
+			"cognito-authentication-type": "",
+			"http-method": "GET",
+			"account-id": "",
+			"resource-path": "/homeapp/measurements",
+			"authorizer-principal-id": "",
+			"user-arn": "",
+			"request-id": "520dedf5-f7b3-11e6-9680-756c38e978e3",
+			"source-ip": "46.120.227.175",
+			"caller": "",
+			"api-key": "",
+			"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36",
+			"user": "",
+			"cognito-identity-pool-id": "",
+			"api-id": "61cn8cug1h",
+			"resource-id": "mrfymt",
+			"stage": "Prod",
+			"cognito-identity-id": "",
+			"cognito-authentication-provider": ""
+		  }
+		}
 	
-	event=POST_url_encoded		
+	event=GET_json		
+	event["params"]["header"]["debug"]="0"
 	context={}
 	result=lambda_handler(event, context)
 	print json.dumps(result)
