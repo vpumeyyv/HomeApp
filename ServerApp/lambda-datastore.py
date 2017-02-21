@@ -28,10 +28,19 @@ SELECT longitude, latitude , sqrt(
 
 # Main function 
 def lambda_handler(event, context):
-	# write event to database, and then fetch the current results
+
 	assert event["context"]["http-method"] in ["POST","GET"] , "Method %r is not supported" % event["context"]["http-method"]
-	if event["params"]["header"]["debug"]=="1": 
-		return event
+
+	# look for "debug" header or query string
+	if bool(event["params"]["header"].get('debug')): 
+		if event["params"]["header"]["debug"]=="1": 
+			return event
+
+	if bool(event["params"]["querystring"].get('debug')): 
+		if event["params"]["querystring"]["debug"]=="1": 
+			return event
+
+	# write event to database, and then fetch the current results
 	connection=connect_database()
 	if event["context"]["http-method"]=="POST" and event["params"]["header"]["Content-type"] == "application/json":
 		response = write_event(event, connection)
