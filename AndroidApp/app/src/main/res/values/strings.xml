@@ -2,4 +2,14 @@
     <string name="app_name">HomeApp</string>
     <string name="title_activity_maps">Map</string>
     <string name="bluetooth_component">HC-06</string>
+    <string name="gass_1">LPG</string>
+    <string name="gass_2">CO2</string>
+    <string name="gass_3">Smoke</string>
+    <string name="gass_4">N-HEXANE</string>
+    <string name="gass_5">BENZENE</string>
+    <string name="gass_6">PROPANE</string>
+    <string name="gass_7">O3</string>
+    <string name="gass_8">NH3</string>
+
 </resources>
+
