@@ -3,7 +3,9 @@ package com.venera.homeapp;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.location.LocationManager;
 import android.os.Message;
@@ -26,7 +28,10 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import android.os.Handler;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.Toast;
+import android.content.Context;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -34,7 +39,7 @@ import org.json.JSONTokener;
 
 import static com.venera.homeapp.R.id.map;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.InfoWindowAdapter {
 
 
     //Defining the required component for any and all location activities
@@ -49,6 +54,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final String TAG = "MY_APP_DEBUG_TAG";
     private int co2 = 0;
     private String js="didn't work";
+    //Int of 1 and 0 for each gas to represent level above the standards
+    //Booleans aren't good here because these numbers are used to represent weights in the info_window layout
+    private int gas_1_bool=1;
+    private int gas_2_bool=1;
+    private int gas_3_bool=1;
+    private int gas_4_bool=1;
+    private int gas_5_bool=1;
+    private int gas_6_bool=1;
+    private int gas_7_bool=1;
+    private int gas_8_bool=1;
 
     @Override
     //What happens when I open the application is executed in 'onCreate'
@@ -59,7 +74,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(map);
         mapFragment.getMapAsync(this);
-
+/*
         //Finding the device's bluetooth ID, if any.
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
@@ -78,9 +93,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
         ConnectThread mConnectThread = new ConnectThread(mDevice);
-        mConnectThread.start();
+        mConnectThread.start();*/
 
     }
+
+
+
     //Open new thread because when the operation finishes it blocks the thread.
     private class ConnectThread extends Thread {
         private final BluetoothSocket mmSocket;
@@ -247,14 +265,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         GoogleMap mMap = googleMap;
         mMap.setMyLocationEnabled(true);
+        mMap.setInfoWindowAdapter(this);
         //Creating a test circle on our lab.
         Circle Test;
-        LatLng test = new LatLng(32.2650, 34.9266);
+        LatLng test = new LatLng(32.25419, 34.9220);
         CircleOptions circleOptions = new CircleOptions()
                 .center(test)
                 .clickable(true)
-                .anchor(1,0)
-                .radius(400)
+                .radius(20)
                 .strokeWidth(0)
                 .fillColor(Color.argb(64,0,0,255));
 
@@ -263,11 +281,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .position(test)
                 .alpha(0)
                 .title("Testing...")
-<<<<<<< HEAD
                 .snippet("CO2 levels are 0 ppm"));
-=======
-                .snippet(readMsg));
->>>>>>> origin/master
 
 
         Test = mMap.addCircle(circleOptions);
@@ -297,9 +311,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 perth.showInfoWindow();
             }
         });
-    }
-    public void setValues() {
 
+    }
+    @Override
+    public View getInfoWindow(Marker marker) {
+        LayoutInflater inflater = getLayoutInflater();
+        View view = inflater.inflate(R.layout.info_window,null,false);
+        return view;
+    }
+
+    @Override
+    public View getInfoContents(Marker marker) {
+        return null;
     }
 }
 
