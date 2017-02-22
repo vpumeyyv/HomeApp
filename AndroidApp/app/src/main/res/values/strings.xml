@@ -1,15 +1,16 @@
 <resources>
     <string name="app_name">HomeApp</string>
+    <string name="google_maps_key" templateMergeStrategy="preserve"
+        translatable="false">AIzaSyCYgLXNsP2hd04qsT_9KgrXGT-t8iapeEI</string>
     <string name="title_activity_maps">Map</string>
     <string name="bluetooth_component">HC-06</string>
-    <string name="gass_1">LPG</string>
-    <string name="gass_2">CO2</string>
-    <string name="gass_3">Smoke</string>
-    <string name="gass_4">N-HEXANE</string>
-    <string name="gass_5">BENZENE</string>
-    <string name="gass_6">PROPANE</string>
-    <string name="gass_7">O3</string>
-    <string name="gass_8">NH3</string>
-
+    <string name="gas_1">LPG</string>
+    <string name="gas_2">CO2</string>
+    <string name="gas_3">SMOKE</string>
+    <string name="gas_4">N-HEXANE</string>
+    <string name="gas_5">BENZENE</string>
+    <string name="gas_6">PROPANE</string>
+    <string name="gas_7">O3</string>
+    <string name="gas_8">NH3</string>
+    <string name="gas_9">null</string>
 </resources>
-
