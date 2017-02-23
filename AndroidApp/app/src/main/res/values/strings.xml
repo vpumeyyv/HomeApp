@@ -1,16 +1,21 @@
 <resources>
     <string name="app_name">HomeApp</string>
+    <!-- The Google maps API key-->
     <string name="google_maps_key" templateMergeStrategy="preserve"
         translatable="false">AIzaSyCYgLXNsP2hd04qsT_9KgrXGT-t8iapeEI</string>
     <string name="title_activity_maps">Map</string>
     <string name="bluetooth_component">HC-06</string>
+    <!--
+    The gases we monitor are defined here so that
+    changes to them are easy and simple.
+    -->
     <string name="gas_1">LPG</string>
-    <string name="gas_2">CO2</string>
+    <string name="gas_2">CO</string>
     <string name="gas_3">SMOKE</string>
     <string name="gas_4">N-HEXANE</string>
     <string name="gas_5">BENZENE</string>
     <string name="gas_6">PROPANE</string>
     <string name="gas_7">O3</string>
     <string name="gas_8">NH3</string>
-    <string name="gas_9">null</string>
+    <string name="gas_9">CO2</string>
 </resources>
