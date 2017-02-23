@@ -1,5 +1,6 @@
 package com.venera.homeapp;
 
+//All the components the app will ues are imported at the beginning.
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -33,18 +34,19 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import static com.venera.homeapp.R.id.map;
 
+//the main clss, in which everything happens.
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleMap.InfoWindowAdapter {
 
-    //Defining the required component for any and all location activities
+    //Defining the required component for any and all location activities.
     private LocationManager locationManager;
-    //Defining the required component for online location monitoring
+    //Defining the required component for online location monitoring.
     private LocationListener listener;
-    //Defining the required component for any and all Bluetooth activities
+    //Defining the required component for any and all Bluetooth activities.
     private BluetoothAdapter mBluetoothAdapter;
-    //The bluetooth device the android will connect to
+    //The bluetooth device the android will connect to.
     private BluetoothDevice mDevice;
-    //A string for debugging the bluetooth connection
+    //A string for debugging the bluetooth connection.
     private static final String TAG = "MY_APP_DEBUG_TAG";
 
 
@@ -52,8 +54,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     //What happens when I open the application is executed in 'onCreate'
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //This screen will use the activity_maps.xml layout.
         setContentView(R.layout.activity_maps);
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        //Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(map);
         mapFragment.getMapAsync(this);
@@ -61,23 +64,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //Finding the device's bluetooth ID, if any.
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
-            // Device does not support Bluetooth
+            Log.d(TAG,"Device does not support Bluetooth");
         }
-
-        //If Bluetooth isn't on, request user to allow app turn it on using a popup.
-        if (!mBluetoothAdapter.isEnabled()) {
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, 1);
-        }
-        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-        if (pairedDevices.size() > 0) {
-            for (BluetoothDevice device : pairedDevices) {
-                mDevice = device;
+        else {
+            //Device supports bluetooth.
+            //If Bluetooth isn't on, request user to allow app turn it on using a popup.
+            if (!mBluetoothAdapter.isEnabled()) {
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, 1);
             }
+            Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+            if (pairedDevices.size() > 0) {
+                for (BluetoothDevice device : pairedDevices) {
+                    mDevice = device;
+                }
+            }
+            ConnectThread mConnectThread = new ConnectThread(mDevice);
+            mConnectThread.start();
         }
-        ConnectThread mConnectThread = new ConnectThread(mDevice);
-        mConnectThread.start();
-
     }
 
 
