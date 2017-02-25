@@ -6,12 +6,18 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.graphics.Color;
+import android.location.Location;
 import android.location.LocationManager;
 import android.os.Message;
+import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -23,32 +29,59 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.GridView;
 import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+
+
 import static com.venera.homeapp.R.id.map;
 
-//the main clss, in which everything happens.
+//the main class, in which everything happens.
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
-        GoogleMap.InfoWindowAdapter {
+        GoogleMap.InfoWindowAdapter, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
 
+    //Defining the required component for receiving location data.
+    GoogleApiClient mGoogleApiClient;
     //Defining the required component for any and all location activities.
-    private LocationManager locationManager;
+    LocationManager locationManager;
     //Defining the required component for online location monitoring.
-    private LocationListener listener;
+    LocationListener listener;
     //Defining the required component for any and all Bluetooth activities.
-    private BluetoothAdapter mBluetoothAdapter;
+    BluetoothAdapter mBluetoothAdapter;
     //The bluetooth device the android will connect to.
-    private BluetoothDevice mDevice;
+    BluetoothDevice mDevice;
     //A string for debugging the bluetooth connection.
-    private static final String TAG = "MY_APP_DEBUG_TAG";
-
+    static final String TAG = "MY_APP_DEBUG_TAG";
+    //A boolean for telling if the client is ready
+    boolean clientReady =false;
+    List DBList = new ArrayList<>();
+    Location mLastLocation = null;
+    LatLng myPosition = null;
+    String testString = "{\n" +
+            "  \"CO\": 2,\n" +
+            "  \"LPG\": 4,\n" +
+            "  \"CO2\": 8,\n" +
+            "  \"SMOKE\": 16,\n" +
+            "  \"N_HEXANE\": 32\n" +
+            "}";
+    JSONObject testJson =  new JSONObject(testString);
+    public static int COv;
+    public static int LPGv;
+    public static int CO2v;
+    public static int SMOKEv;
+    public static int N_HEXANEv;
+    public MapsActivity() throws JSONException {
+    }
 
     @Override
     //What happens when I open the application is executed in 'onCreate'
@@ -61,6 +94,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .findFragmentById(map);
         mapFragment.getMapAsync(this);
 
+        // Create an instance of GoogleAPIClient.
+        if (mGoogleApiClient == null) {
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(LocationServices.API)
+                    .build();
+        }
         //Finding the device's bluetooth ID, if any.
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
@@ -84,6 +125,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    //when connected to Google API client.
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        clientReady = true;
+    }
+    //when connection to Google API client is suspended.
+    @Override
+    public void onConnectionSuspended(int i) {
+        clientReady = false;
+    }
 
 
     //Open new thread because when the operation finishes it blocks the thread.
@@ -91,7 +142,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         private final BluetoothSocket mmSocket;
         private final BluetoothDevice mmDevice;
         private final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-        public ConnectThread(BluetoothDevice device) {
+        ConnectThread(BluetoothDevice device) {
             BluetoothSocket tmp = null;
             mmDevice = device;
             //When the app deals with outside components, the app needs to check that the
@@ -139,11 +190,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private class ConnectedThread extends Thread {
         private final BluetoothSocket mmSocket;
         private final InputStream mmInStream;
-        private final OutputStream mmOutStream;
-        public ConnectedThread(BluetoothSocket socket) {
+        //private final OutputStream mmOutStream;
+        ConnectedThread(BluetoothSocket socket) {
             mmSocket = socket;
             InputStream tmpIn = null;
-            OutputStream tmpOut = null;
+            //OutputStream tmpOut = null;
             // Get the input stream; Using temp objects because member streams are final.
             try {
                 tmpIn = socket.getInputStream();
@@ -151,13 +202,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 Log.e(TAG, "Error occurred when creating input stream", e);
             }
             mmInStream = tmpIn;
-            mmOutStream = tmpOut;
+            //mmOutStream = tmpOut;
         }
         public void run() {
             byte[] buffer = new byte[1024];
             int begin = 0;
-            int bytes = 0;
-            int count = 0;
+            int bytes;
             while (true) {
                 try {
                     if (this.mmInStream.available() != 0){
@@ -170,7 +220,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                 begin = 0;
                             }
                         }
-                        count++;
                     }
                 } catch (IOException|NullPointerException e) {
                     Log.d(TAG, "Input stream was disconnected", e);
@@ -178,22 +227,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 }
             }
         }
+        /*
         public void write(byte[] bytes) {
             try {
                 mmOutStream.write(bytes);
             } catch (IOException e) { }
         }
-
-        public void cancel() {
-            try {
-                mmSocket.close();
-            } catch (IOException e) {
-                Log.e(TAG, "Could not close the connect socket", e);
-            }
-        }
+        */
     }
 
-     //Indicate that the connection attempt failed and notify the user.
+     //Indicate that the connection attempt failed, notify the user and try again.
     private void connectionFailed() {
         Toast.makeText(getApplicationContext(), "Unable to connect device",
                 Toast.LENGTH_SHORT).show();
@@ -205,15 +248,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         @Override
         public void handleMessage(Message msg) {
             byte[] writeBuf = (byte[]) msg.obj;
-            int begin = (int)msg.arg1;
-            int end = (int)msg.arg2;
-
+            int begin = msg.arg1;
+            int end = msg.arg2;
             switch(msg.what) {
                 case 1:
                     String writeMessage = new String(writeBuf);
                     writeMessage = writeMessage.substring(begin, end);
                     try {
-                        JSONObject json = (JSONObject) new JSONTokener(writeMessage).nextValue();
+                        JSONObject json = (JSONObject) new JSONTokener(writeMessage)
+                                .nextValue();
                     } catch (JSONException e) {
                         Log.e("JSONObject", "Input was not in JSON format");
                     }
@@ -221,58 +264,155 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
     };
+    protected void onStart() {
+        mGoogleApiClient.connect();
+        super.onStart();
+    }
+
+    protected void onStop() {
+        mGoogleApiClient.disconnect();
+        super.onStop();
+    }
 
      //Manipulates the map once available.
      //This callback is triggered when the map is ready to be used.
      //This is where we can add markers for showing the air pollution.
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        GoogleMap mMap = googleMap;
-        mMap.setMyLocationEnabled(true);
-        mMap.setInfoWindowAdapter(this);
-        //Creating a test circle on our lab.
-        Circle Test;
-        LatLng test = new LatLng(32.25419, 34.9220);
-        CircleOptions circleOptions = new CircleOptions()
-                .center(test)
+        googleMap.setMyLocationEnabled(true);
+        googleMap.setInfoWindowAdapter(this);
+        //Creating a test circle on our school bus station.
+        LatLng TestLocation = new LatLng(32.25419, 34.9220);
+        googleMap.addCircle(new CircleOptions()
+                .center(TestLocation)
                 .clickable(true)
                 .radius(20)
                 .strokeWidth(0)
-                .fillColor(Color.argb(64,0,0,255));
+                //Blue circle a quarter visible.
+                .fillColor(Color.argb(64, 0, 0, 255)));
+
+        try {
+            COv = testJson.getInt("CO");
+            LPGv = testJson.getInt("LPG");
+            CO2v = testJson.getInt("CO2");
+            SMOKEv = testJson.getInt("SMOKE");
+            N_HEXANEv = testJson.getInt("N_HEXANE");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
         //Creating an invisible marker in order to create the info window
-        final Marker markerTest = mMap.addMarker(new MarkerOptions()
-                .position(test)
+        //on the test cir4cle.
+        final Marker markerTest = googleMap.addMarker(new MarkerOptions()
+                .position(TestLocation)
                 .infoWindowAnchor(0,0)
                 .alpha(0));
+        //
+        myCurrentPosition();
 
-
-        Test = mMap.addCircle(circleOptions);
-
-        //when the test circle is clicked-
-        mMap.setOnCameraIdleListener(new GoogleMap.OnCameraIdleListener() {
+        //When the test circle is clicked show his info window.
+        googleMap.setOnCircleClickListener(new GoogleMap.OnCircleClickListener() {
+            @Override
+            public void onCircleClick(Circle Test) {
+                markerTest.showInfoWindow();
+            }
+        });
+        //When the map is moved hide the test circle's info window.
+        googleMap.setOnCameraIdleListener(new GoogleMap.OnCameraIdleListener() {
             @Override
             public void onCameraIdle() {
                 markerTest.hideInfoWindow();
             }
         });
-        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+        //When the map is clicked hide the test circle's info window.
+        googleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
                 markerTest.hideInfoWindow();
             }
         });
 
-        mMap.setOnCircleClickListener(new GoogleMap.OnCircleClickListener() {
-            @Override
-            public void onCircleClick(Circle Test) {
-                markerTest.showInfoWindow();
-            }
-        });
 
+
+    }
+    public void myCurrentPosition (){
+        while (true) {
+            if (clientReady){
+                mLastLocation = LocationServices.FusedLocationApi
+                        .getLastLocation(mGoogleApiClient);
+                if (mLastLocation != null) {
+                    myPosition = new LatLng(mLastLocation.getLatitude()
+                            ,mLastLocation.getLongitude());
+                    /*
+                    try {
+                        COv = testJson.getInt("CO");
+                        LPGv = testJson.getInt("LPG");
+                        CO2v = testJson.getInt("CO2");
+                        SMOKEv = testJson.getInt("SMOKE");
+                        N_HEXANEv = testJson.getInt("N_HEXANE");
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    */
+                }
+            }
+        }
+    }
+    public List getInfo(List list){
+        list.clear();
+        //Get all the JSON strings from the data base
+        //In the meantime-
+        Random rnd = new Random();
+        String input;
+        for (int i =0;i<rnd.nextInt(10);i++){
+            input = "{\n" +
+                    "  \"phoneid\": \"012345678AA\",\n" +
+                    "  \"data\": [\n" +
+                    "    {\n" +
+                    "      \"gas\": \"CO\",\n" +
+                    "      \"concentration\": "+rnd.nextInt(1000)+"\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "      \"gas\": \"SMOKE\",\n" +
+                    "      \"concentration\": "+rnd.nextInt(1000)+"\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "      \"gas\": \"N-HEXANE\",\n" +
+                    "      \"concentration\": "+rnd.nextInt(1000)+"\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "      \"gas\": \"BENZENE\",\n" +
+                    "      \"concentration\": "+rnd.nextInt(1000)+"\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "      \"gas\": \"PROPANE\",\n" +
+                    "      \"concentration\": "+rnd.nextInt(1000)+"\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "      \"gas\": \"O3\",\n" +
+                    "      \"concentration\": "+rnd.nextInt(1000)+"\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "      \"gas\": \"NH3\",\n" +
+                    "      \"concentration\": "+rnd.nextInt(1000)+"\n" +
+                    "    }\n" +
+                    "  ]\n" +
+                    "}";
+            list.add(input);
+        }
+        return list;
+    }
+    @Override
+    public void onConnectionFailed(ConnectionResult result) {
+        // An unresolvable error has occurred and a connection to Google APIs
+        // could not be established. Display an error message, or handle
+        // the failure silently
     }
     @Override
     public View getInfoWindow(Marker marker) {
+        GridView gridview = (GridView) findViewById(R.id.gridview);
+        gridview.setAdapter(new MyAdapter(this));
+
         LayoutInflater inflater = getLayoutInflater();
         View view = inflater.inflate(R.layout.info_window,null,false);
         return view;
@@ -284,6 +424,5 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
 }
-
 
 
